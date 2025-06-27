@@ -10,7 +10,7 @@
       "maxDuration": 30
     }
   },
-  "regions": ["hkg1", "sin1"],
+  "regions": ["hkg1"],
   "github": {
     "silent": true
   }
