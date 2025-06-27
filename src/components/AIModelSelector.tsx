@@ -12,37 +12,67 @@ import {
   SelectLabel,
   SelectSeparator
 } from './ui/select'
-import { aiProviders, getAvailableModels, isProviderAvailable, type AIModel } from '@/lib/ai'
+import { type AIModel } from '@/lib/ai'
 
 interface AIModelSelectorProps {
   selectedModel: string
   onModelChange: (modelId: string, providerId: string) => void
 }
 
+interface ProviderStatus {
+  available: boolean
+  name: string
+  models: AIModel[]
+}
+
 export function AIModelSelector({ selectedModel, onModelChange }: AIModelSelectorProps) {
   const [availableModels, setAvailableModels] = useState<AIModel[]>([])
+  const [providerStatus, setProviderStatus] = useState<Record<string, ProviderStatus>>({})
   const [currentProvider, setCurrentProvider] = useState<string>('')
   const [isClient, setIsClient] = useState(false)
+  const [loading, setLoading] = useState(true)
 
   useEffect(() => {
     setIsClient(true)
-    const models = getAvailableModels()
-    setAvailableModels(models)
     
-    // 设置默认模型
-    if (models.length > 0 && !selectedModel) {
-      const defaultModel = models.find(m => m.provider === 'deepseek') || models[0]
-      onModelChange(defaultModel.id, defaultModel.provider)
-      setCurrentProvider(defaultModel.provider)
-    } else if (selectedModel) {
-      const model = models.find(m => m.id === selectedModel)
-      if (model) {
-        setCurrentProvider(model.provider)
+    // 获取提供商状态
+    const fetchProviderStatus = async () => {
+      try {
+        const response = await fetch('/api/providers/status')
+        const status = await response.json()
+        setProviderStatus(status)
+        
+        // 收集可用的模型
+        const models: AIModel[] = []
+        Object.entries(status).forEach(([providerId, provider]: [string, any]) => {
+          if (provider.available) {
+            models.push(...provider.models)
+          }
+        })
+        setAvailableModels(models)
+        
+        // 设置默认模型
+        if (models.length > 0 && !selectedModel) {
+          const defaultModel = models.find(m => m.provider === 'deepseek') || models[0]
+          onModelChange(defaultModel.id, defaultModel.provider)
+          setCurrentProvider(defaultModel.provider)
+        } else if (selectedModel) {
+          const model = models.find(m => m.id === selectedModel)
+          if (model) {
+            setCurrentProvider(model.provider)
+          }
+        }
+      } catch (error) {
+        console.error('Failed to fetch provider status:', error)
+      } finally {
+        setLoading(false)
       }
     }
+    
+    fetchProviderStatus()
   }, [selectedModel, onModelChange])
 
-  if (!isClient) {
+  if (!isClient || loading) {
     return (
       <div className="space-y-3">
         <div className="flex items-center space-x-2 mb-2">
@@ -50,7 +80,11 @@ export function AIModelSelector({ selectedModel, onModelChange }: AIModelSelecto
           <h3 className="text-lg font-semibold">AI模型选择</h3>
         </div>
         <div className="animate-pulse">
-          <div className="h-10 bg-gray-200 rounded"></div>
+          <div className="h-10 bg-gray-200 rounded mb-3"></div>
+          <div className="grid grid-cols-2 gap-2">
+            <div className="h-8 bg-gray-200 rounded"></div>
+            <div className="h-8 bg-gray-200 rounded"></div>
+          </div>
         </div>
       </div>
     )
@@ -63,8 +97,8 @@ export function AIModelSelector({ selectedModel, onModelChange }: AIModelSelecto
   }
 
   const getModelDisplayName = (model: AIModel) => {
-    const provider = aiProviders[model.provider]
-    return `${provider.name} - ${model.name}`
+    const provider = providerStatus[model.provider]
+    return `${provider?.name} - ${model.name}`
   }
 
   const getCurrentModel = () => {
@@ -92,23 +126,23 @@ export function AIModelSelector({ selectedModel, onModelChange }: AIModelSelecto
           <SelectValue placeholder="选择AI模型..." />
         </SelectTrigger>
         <SelectContent>
-          {Object.values(aiProviders).map((provider) => {
-            if (!isProviderAvailable(provider.id)) return null
+          {Object.entries(providerStatus).map(([providerId, provider]) => {
+            if (!provider.available) return null
             
             return (
-              <SelectGroup key={provider.id}>
+              <SelectGroup key={providerId}>
                 <SelectLabel className="flex items-center space-x-2">
                   <span>{provider.name}</span>
-                  {provider.id === 'deepseek' && (
+                  {providerId === 'deepseek' && (
                     <span className="text-xs bg-green-100 text-green-800 px-2 py-0.5 rounded-full">
                       推荐
                     </span>
                   )}
                 </SelectLabel>
-                {provider.models.map((model) => (
+                {provider.models.map((model: AIModel) => (
                   <SelectItem 
-                    key={`${provider.id}/${model.id}`}
-                    value={`${provider.id}/${model.id}`}
+                    key={`${providerId}/${model.id}`}
+                    value={`${providerId}/${model.id}`}
                   >
                     <div className="flex items-center justify-between w-full">
                       <span>{model.name}</span>
@@ -166,21 +200,21 @@ export function AIModelSelector({ selectedModel, onModelChange }: AIModelSelecto
 
       {/* 配置状态 */}
       <div className="grid grid-cols-2 gap-2">
-        {Object.values(aiProviders).map((provider) => (
+        {Object.entries(providerStatus).map(([providerId, provider]) => (
           <div 
-            key={provider.id}
+            key={providerId}
             className={`flex items-center space-x-2 px-3 py-2 rounded-md border text-sm ${
-              isProviderAvailable(provider.id)
+              provider.available
                 ? 'bg-green-50 border-green-200 text-green-800'
                 : 'bg-gray-50 border-gray-200 text-gray-500'
             }`}
           >
             <div className={`w-2 h-2 rounded-full ${
-              isProviderAvailable(provider.id) ? 'bg-green-500' : 'bg-gray-400'
+              provider.available ? 'bg-green-500' : 'bg-gray-400'
             }`} />
             <span>{provider.name}</span>
             <span className="text-xs">
-              {isProviderAvailable(provider.id) ? '已配置' : '未配置'}
+              {provider.available ? '已配置' : '未配置'}
             </span>
           </div>
         ))}
