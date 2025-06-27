@@ -67,7 +67,7 @@ export const aiProviders: Record<string, AIProvider> = {
         costPer1kTokens: 0.0014
       }
     ],
-    apiKey: process.env.DEEPSEEK_API_KEY || 'sk-0ce2804053514043b5501fcb1282952a',
+    apiKey: process.env.DEEPSEEK_API_KEY || '',
     baseURL: 'https://api.deepseek.com/v1'
   }
 }
