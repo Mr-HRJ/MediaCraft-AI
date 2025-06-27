@@ -1,0 +1,43 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Content {
+  id          String   @id @default(cuid())
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  
+  // 用户标签
+  tags        String[]
+  
+  // 生成的内容
+  topic       String?  // 选题
+  script      String?  // 脚本
+  copy        String?  // 文案
+  platform    String?  // 平台类型：抖音、小红书、微博等
+  
+  // 内容元数据
+  title       String?
+  description String?
+  category    String?
+  
+  @@map("contents")
+}
+
+model Tag {
+  id          String   @id @default(cuid())
+  name        String   @unique
+  category    String?  // 标签分类：美食、旅游、科技等
+  usage_count Int      @default(1)
+  createdAt   DateTime @default(now())
+  
+  @@map("tags")
+} 

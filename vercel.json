@@ -1,0 +1,17 @@
+{
+  "build": {
+    "env": {
+      "DEEPSEEK_API_KEY": "@deepseek_api_key",
+      "OPENAI_API_KEY": "@openai_api_key"
+    }
+  },
+  "functions": {
+    "src/app/api/**/*.ts": {
+      "maxDuration": 30
+    }
+  },
+  "regions": ["hkg1", "sin1"],
+  "github": {
+    "silent": true
+  }
+} 
